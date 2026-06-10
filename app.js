@@ -444,7 +444,6 @@ function uploadAnexos(files){
     reader.readAsDataURL(file);
   }
 }
-
 function renderAnexosPendentes(){
   const el=document.getElementById('anexosList');
   el.innerHTML=anexosPendentes.map((a,i)=>{
@@ -458,16 +457,13 @@ function renderAnexosPendentes(){
     </div>`;
   }).join('');
 }
-
 function remAnexo(i){anexosPendentes.splice(i,1);renderAnexosPendentes()}
-
 async function uploadAnexosParaStorage(prontId){
   for(const a of anexosPendentes){
     const path=`prontuarios/${prontId}/${Date.now()}_${a.file.name}`;
     await sb.storage.from('anexos').upload(path,a.file,{cacheControl:'3600',upsert:false});
   }
 }
-
 async function carregarAnexos(prontId){
   const{data}=await sb.storage.from('anexos').list(`prontuarios/${prontId}`);
   if(!data||!data.length)return;
@@ -484,7 +480,6 @@ async function carregarAnexos(prontId){
     </div>`;
   }).join('');
 }
-
 function previewImagem(src,nome){
   document.getElementById('imgModalTitle').textContent=nome;
   document.getElementById('imgModalSrc').src=src;
@@ -566,8 +561,14 @@ async function saveValor(){
 function editValor(id){openModalValor(id)}
 async function delValor(id){if(!confirm('Excluir?'))return;const{error}=await sb.from('tabela_valores').delete().eq('id',id);if(error)return showToast('Erro.',true);showToast('Excluído!');cachedVals=cachedVals.filter(v=>v.id!==id);renderValores();populateProcSel()}
 
-/* ===== USUÁRIOS ===== */
-function openModalUsuario(){document.getElementById('usr_nome').value='';document.getElementById('usr_email').value='';document.getElementById('usr_senha').value='';document.getElementById('usr_perfil').value='secretaria';document.getElementById('modalUsuario').classList.add('open')}
+/* ===== USUÁRIOS — CORRIGIDO COM EDGE FUNCTION ===== */
+function openModalUsuario(){
+  document.getElementById('usr_nome').value='';
+  document.getElementById('usr_email').value='';
+  document.getElementById('usr_senha').value='';
+  document.getElementById('usr_perfil').value='secretaria';
+  document.getElementById('modalUsuario').classList.add('open');
+}
 async function saveUsuario(){
   const email=document.getElementById('usr_email').value.trim();
   const senha=document.getElementById('usr_senha').value;
@@ -575,17 +576,27 @@ async function saveUsuario(){
   const perfil=document.getElementById('usr_perfil').value;
   if(!email||!senha)return showToast('Preencha e-mail e senha.',true);
   if(senha.length<6)return showToast('Senha mínimo 6 caracteres.',true);
-  const{data,error}=await sb.auth.admin.createUser({email,password:senha,email_confirm:true});
-  if(error){showToast('Erro ao criar usuário: use o painel do Supabase → Authentication → Users → Invite user.',true);closeModal('modalUsuario');return}
-  await sb.from('usuarios').insert({id:data.user.id,nome,email,perfil,ativo:true});
-  showToast('Usuário criado!');closeModal('modalUsuario');await loadUsers();renderUsuarios();
+  const{data:{session}}=await sb.auth.getSession();
+  const resp=await fetch(`${SUPABASE_URL}/functions/v1/criar-usuario`,{
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'Authorization':'Bearer '+session.access_token,
+      'apikey':SUPABASE_KEY
+    },
+    body:JSON.stringify({email,senha,nome,perfil})
+  });
+  const result=await resp.json();
+  if(result.error)return showToast('Erro: '+result.error,true);
+  showToast('Usuário criado! Login: '+email+' / Senha: '+senha);
+  closeModal('modalUsuario');await loadUsers();renderUsuarios();
 }
 async function toggleUsuario(id,ativo){
   await sb.from('usuarios').update({ativo:!ativo}).eq('id',id);
   showToast(ativo?'Usuário desativado':'Usuário ativado');await loadUsers();renderUsuarios();
 }
 
-/* ===== IA — SUGESTÃO DIAGNÓSTICO ===== */
+/* ===== IA ===== */
 async function pedirSugestaoIA(){
   const queixa=document.getElementById('pront_queixa').value;
   const sint=[...document.querySelectorAll('#chips_sint .chip.on')].map(c=>c.textContent.trim()).join(', ');
@@ -627,8 +638,7 @@ function iniciarVozCampo(campoId){
   };
   rec.onerror=()=>{status.style.display='none';showToast('Erro no reconhecimento de voz.',true)};
   rec.onend=()=>{status.style.display='none'};
-  rec.start();
-  rec.recording=true;
+  rec.start();rec.recording=true;
   showToast('Ditado iniciado — fale agora!');
 }
 function pararVoz(){if(vozRec){vozRec.stop();vozRec=null}document.getElementById('vozStatus').style.display='none'}
@@ -666,7 +676,7 @@ function addMedVals(nome,dose,freq,dur){
 function closeModal(id){document.getElementById(id).classList.remove('open')}
 document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',function(e){if(e.target===this)this.classList.remove('open')}));
 
-/* ===== DRAG & DROP ANEXOS ===== */
+/* ===== DRAG & DROP ===== */
 const dz=document.getElementById('dropZone');
 if(dz){
   dz.addEventListener('dragover',e=>{e.preventDefault();dz.style.borderColor='var(--teal)'});
@@ -674,7 +684,7 @@ if(dz){
   dz.addEventListener('drop',e=>{e.preventDefault();dz.style.borderColor='var(--border)';uploadAnexos(e.dataTransfer.files)});
 }
 
-/* ===== AUTO LOGIN CHECK ===== */
+/* ===== AUTO LOGIN ===== */
 (async()=>{
   const{data:{session}}=await sb.auth.getSession();
   if(session){await initApp(session.user)}
