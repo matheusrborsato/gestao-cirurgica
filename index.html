@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gestão Cirúrgica</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@2.44.0/tabler-icons.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="app">
+
+<!-- LOGIN -->
+<div class="login-wrap" id="loginScreen">
+  <div class="login-card">
+    <div class="login-logo"><i class="ti ti-medical-cross"></i></div>
+    <div class="login-title">Gestão Cirúrgica</div>
+    <div class="login-sub">Entre com seu e-mail e senha</div>
+    <div class="login-err" id="loginErr" style="display:none"></div>
+    <div class="form-field" style="margin-bottom:12px">
+      <label class="form-label">E-mail</label>
+      <input type="email" class="form-input" id="loginEmail" placeholder="seu@email.com">
+    </div>
+    <div class="form-field" style="margin-bottom:16px">
+      <label class="form-label">Senha</label>
+      <input type="password" class="form-input" id="loginPwd" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button class="btn-primary w100" onclick="doLogin()" id="btnLogin"><i class="ti ti-lock-open"></i>Entrar</button>
+    <div class="login-hint">Primeiro acesso? Use o e-mail cadastrado pelo administrador.</div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="mainApp" style="display:none;flex-direction:column;min-height:100vh">
+  <div class="header">
+    <div class="header-icon"><i class="ti ti-medical-cross"></i></div>
+    <div>
+      <div class="header-title">Gestão Cirúrgica</div>
+      <div class="header-sub" id="headerSub">Carregando...</div>
+    </div>
+    <div style="margin-left:auto;display:flex;align-items:center;gap:8px">
+      <div class="sync-status"><i class="ti ti-cloud-check"></i><span id="syncTxt">Supabase</span></div>
+    </div>
+  </div>
+  <div class="lock-bar">
+    <div class="lock-info"><i class="ti ti-shield-check"></i><span id="perfilLabel">Carregando...</span></div>
+    <div class="bar-btns">
+      <button class="btn-bar" id="btnFollowUp" onclick="checkFollowUps()"><i class="ti ti-bell"></i>Follow-ups</button>
+      <button class="btn-bar" onclick="showTab('config')"><i class="ti ti-settings"></i>Config</button>
+      <button class="btn-bar" onclick="doLogout()"><i class="ti ti-logout"></i>Sair</button>
+    </div>
+  </div>
+  <div class="nav" id="mainNav">
+    <button class="nav-btn active" onclick="showTab('procedimentos')" id="tab-procedimentos"><i class="ti ti-clipboard-list"></i>Procedimentos</button>
+    <button class="nav-btn" onclick="showTab('pacientes')" id="tab-pacientes"><i class="ti ti-users"></i>Pacientes</button>
+    <button class="nav-btn medico-only" onclick="showTab('prontuarios')" id="tab-prontuarios"><i class="ti ti-stethoscope"></i>Prontuários</button>
+    <button class="nav-btn" onclick="showTab('pagamentos')" id="tab-pagamentos"><i class="ti ti-cash"></i>Pagamentos</button>
+    <button class="nav-btn" onclick="showTab('valores')" id="tab-valores"><i class="ti ti-receipt"></i>Tabela de Valores</button>
+    <button class="nav-btn medico-only" onclick="showTab('relatorios')" id="tab-relatorios"><i class="ti ti-chart-bar"></i>Relatórios</button>
+    <button class="nav-btn medico-only" onclick="showTab('usuarios')" id="tab-usuarios"><i class="ti ti-user-cog"></i>Usuários</button>
+    <button class="nav-btn" onclick="showTab('config')" id="tab-config"><i class="ti ti-settings"></i>Config</button>
+  </div>
+  <div class="content">
+
+    <!-- PROCEDIMENTOS -->
+    <div id="view-procedimentos">
+      <div class="filter-bar">
+        <input type="text" class="form-input search-input" id="searchProc" placeholder="Buscar paciente ou procedimento..." oninput="renderProc()">
+        <select class="form-input" id="filterStatus" onchange="renderProc()" style="min-width:200px">
+          <option value="">Todos os status</option>
+          <option>Aguardando retorno do paciente</option>
+          <option>Aguardando retorno do médico</option>
+          <option>Aprovado</option>
+          <option>Cancelado</option>
+          <option>Aguardando OPME</option>
+          <option>Aguardando Anestesista</option>
+          <option>Aguardando segundo cirurgião</option>
+          <option>Sem resposta do paciente</option>
+        </select>
+        <button class="btn-new" onclick="openModalProc()"><i class="ti ti-plus"></i>Novo</button>
+      </div>
+      <div class="card"><div class="table-wrap">
+        <table>
+          <thead><tr><th>Paciente</th><th>Procedimento</th><th>Telefone</th><th>Solicitação</th><th>Hospital</th><th>Turno</th><th>Follow-ups</th><th>Status</th><th>Ações</th></tr></thead>
+          <tbody id="tbodyProc"></tbody>
+        </table>
+      </div></div>
+    </div>
+
+    <!-- PACIENTES -->
+    <div id="view-pacientes" style="display:none">
+      <div class="filter-bar">
+        <input type="text" class="form-input search-input" id="searchPac" placeholder="Buscar paciente..." oninput="renderPacientes()">
+        <button class="btn-new" onclick="openModalPaciente()"><i class="ti ti-plus"></i>Novo Paciente</button>
+      </div>
+      <div class="card"><div class="table-wrap">
+        <table>
+          <thead><tr><th>Nome</th><th>Telefone</th><th>Convênio</th><th>Alergias</th><th>Comorbidades</th><th>Ações</th></tr></thead>
+          <tbody id="tbodyPac"></tbody>
+        </table>
+      </div></div>
+    </div>
+
+    <!-- PRONTUÁRIOS -->
+    <div id="view-prontuarios" style="display:none">
+      <div class="filter-bar">
+        <input type="text" class="form-input search-input" id="searchPront" placeholder="Buscar paciente..." oninput="renderProntuarios()">
+        <button class="btn-new" onclick="openModalProntuario()"><i class="ti ti-plus"></i>Novo Prontuário</button>
+        <button class="btn-new" style="background:#534AB7" onclick="toggleVoz()" id="btnVoz"><i class="ti ti-microphone"></i>Ditado por voz</button>
+      </div>
+      <div id="vozStatus" style="display:none;background:#EEEDFE;border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:13px;color:#3C3489;display:flex;align-items:center;gap:8px">
+        <i class="ti ti-microphone" style="font-size:18px"></i>
+        <span id="vozTxt">Aguardando fala...</span>
+      </div>
+      <div class="card"><div class="table-wrap">
+        <table>
+          <thead><tr><th>Paciente</th><th>Data</th><th>Tipo</th><th>Queixa</th><th>Diagnóstico</th><th>Anexos</th><th>Ações</th></tr></thead>
+          <tbody id="tbodyPront"></tbody>
+        </table>
+      </div></div>
+    </div>
+
+    <!-- PAGAMENTOS -->
+    <div id="view-pagamentos" style="display:none">
+      <div class="filter-bar">
+        <input type="text" class="form-input search-input" id="searchPag" placeholder="Buscar paciente..." oninput="renderPag()">
+        <button class="btn-new" onclick="openModalPag()"><i class="ti ti-plus"></i>Registrar Pagamento</button>
+      </div>
+      <div class="metrics" id="metricsPag"></div>
+      <div class="card"><div class="table-wrap">
+        <table>
+          <thead><tr><th>Paciente</th><th>Procedimento</th><th>Cirurgião</th><th>Anest.</th><th>Aux.</th><th>Instr.</th><th>OPME</th><th>Agend.</th><th>Total</th><th>Data</th><th>Ações</th></tr></thead>
+          <tbody id="tbodyPag"></tbody>
+        </table>
+      </div></div>
+    </div>
+
+    <!-- VALORES -->
+    <div id="view-valores" style="display:none">
+      <div class="filter-bar">
+        <span style="font-size:15px;font-weight:500">Tabela de Procedimentos e Valores</span>
+        <button class="btn-new" style="margin-left:auto" onclick="openModalValor()"><i class="ti ti-plus"></i>Novo</button>
+      </div>
+      <div class="card"><div class="table-wrap">
+        <table>
+          <thead><tr><th>Procedimento</th><th>Valor Cirurgião</th><th>Código TUSS</th><th>2º Cirurgião</th><th>Ações</th></tr></thead>
+          <tbody id="tbodyValores"></tbody>
+        </table>
+      </div></div>
+    </div>
+
+    <!-- RELATÓRIOS -->
+    <div id="view-relatorios" style="display:none">
+      <div class="metrics" id="metricsRel"></div>
+      <div class="charts-grid" id="chartsGrid"></div>
+    </div>
+
+    <!-- USUÁRIOS -->
+    <div id="view-usuarios" style="display:none">
+      <div class="filter-bar">
+        <span style="font-size:15px;font-weight:500">Gerenciar Usuários</span>
+        <button class="btn-new" style="margin-left:auto" onclick="openModalUsuario()"><i class="ti ti-plus"></i>Convidar Usuário</button>
+      </div>
+      <div class="card"><div class="table-wrap">
+        <table>
+          <thead><tr><th>Nome</th><th>E-mail</th><th>Perfil</th><th>Status</th><th>Ações</th></tr></thead>
+          <tbody id="tbodyUsuarios"></tbody>
+        </table>
+      </div></div>
+    </div>
+
+    <!-- CONFIG -->
+    <div id="view-config" style="display:none">
+      <div class="card" style="max-width:500px">
+        <div class="config-sec">
+          <h3><i class="ti ti-lock" style="color:var(--teal)"></i>Alterar Senha</h3>
+          <div style="display:grid;gap:10px">
+            <div><label class="form-label">Nova senha</label><input type="password" class="form-input" id="novaSenha" placeholder="Mínimo 6 caracteres"></div>
+            <div><label class="form-label">Confirmar nova senha</label><input type="password" class="form-input" id="confirmSenha"></div>
+          </div>
+          <div id="senhaMsg" style="display:none;margin-top:8px;font-size:13px;padding:8px 12px;border-radius:6px"></div>
+          <button class="btn-primary" style="margin-top:12px" onclick="alterarSenha()"><i class="ti ti-check"></i>Alterar Senha</button>
+        </div>
+        <div class="config-sec" style="border-top:.5px solid var(--border);padding-top:20px;margin-top:8px">
+          <h3><i class="ti ti-bell" style="color:var(--teal)"></i>Follow-up Automático</h3>
+          <p style="font-size:13px;color:var(--text-muted);margin-bottom:12px;line-height:1.6">Verifica pacientes sem retorno. Após 3 tentativas de 5 em 5 dias, muda para "Sem resposta do paciente".</p>
+          <button class="btn-primary" onclick="checkFollowUps()"><i class="ti ti-refresh"></i>Verificar Agora</button>
+        </div>
+        <div class="config-sec" style="border-top:.5px solid var(--border);padding-top:20px;margin-top:8px">
+          <h3><i class="ti ti-database" style="color:var(--teal)"></i>Banco de Dados</h3>
+          <div style="background:var(--gray-bg);padding:10px 12px;border-radius:var(--radius);font-size:12px;font-family:monospace;word-break:break-all;color:var(--text-muted)">wuotmkhbutjhkuxlscrd.supabase.co</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</div>
+
+<!-- MODALS -->
+<div class="modal-overlay" id="modalProc">
+  <div class="modal">
+    <div class="modal-title"><i class="ti ti-clipboard-plus"></i><span id="modalProcTitle">Novo Procedimento</span></div>
+    <div class="form-grid">
+      <div class="full"><label class="form-label">Paciente *</label><select class="form-input" id="mp_paciente" onchange="autoFillTel()"><option value="">Selecione...</option></select></div>
+      <div class="full"><label class="form-label">Procedimento</label><select class="form-input" id="mp_proc"><option value="">Selecione...</option></select></div>
+      <div><label class="form-label">Telefone</label><input class="form-input" id="mp_tel"></div>
+      <div><label class="form-label">Convênio</label><input class="form-input" id="mp_convenio"></div>
+    </div>
+    <div class="sdiv">Datas de Cotação</div>
+    <div class="form-grid">
+      <div><label class="form-label">Solicitação</label><input type="date" class="form-input" id="mp_d1"></div>
+      <div><label class="form-label">Cotação</label><input type="date" class="form-input" id="mp_d2"></div>
+      <div><label class="form-label">1ª Enviada</label><input type="date" class="form-input" id="mp_d3"></div>
+      <div><label class="form-label">2ª Enviada</label><input type="date" class="form-input" id="mp_d4"></div>
+      <div><label class="form-label">3ª Enviada</label><input type="date" class="form-input" id="mp_d5"></div>
+    </div>
+    <div class="sdiv">Agendamento</div>
+    <div class="form-grid">
+      <div><label class="form-label">Hospital</label><input class="form-input" id="mp_hosp"></div>
+      <div><label class="form-label">Acomodação</label><select class="form-input" id="mp_acomoda"><option value="">—</option><option>Apartamento</option><option>Enfermaria</option><option>Day clinic</option></select></div>
+      <div><label class="form-label">Turno</label><select class="form-input" id="mp_turno"><option value="">—</option><option>Diurno</option><option>Noturno</option></select></div>
+      <div class="full"><label class="form-label">Status</label><select class="form-input" id="mp_status"><option>Aguardando retorno do paciente</option><option>Aguardando retorno do médico</option><option>Aprovado</option><option>Cancelado</option><option>Aguardando OPME</option><option>Aguardando Anestesista</option><option>Aguardando segundo cirurgião</option><option>Sem resposta do paciente</option></select></div>
+    </div>
+    <div class="form-actions"><button class="btn-secondary" onclick="closeModal('modalProc')">Cancelar</button><button class="btn-primary" onclick="saveProc()"><i class="ti ti-check"></i>Salvar</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalPaciente">
+  <div class="modal">
+    <div class="modal-title"><i class="ti ti-user-plus"></i><span id="modalPacTitle">Novo Paciente</span></div>
+    <div class="form-grid">
+      <div class="full"><label class="form-label">Nome completo *</label><input class="form-input" id="pac_nome"></div>
+      <div><label class="form-label">Nascimento</label><input type="date" class="form-input" id="pac_nasc"></div>
+      <div><label class="form-label">Sexo</label><select class="form-input" id="pac_sexo"><option value="">—</option><option>Masculino</option><option>Feminino</option></select></div>
+      <div><label class="form-label">Telefone</label><input class="form-input" id="pac_tel"></div>
+      <div><label class="form-label">Convênio</label><input class="form-input" id="pac_convenio"></div>
+      <div><label class="form-label">Tipo Sanguíneo</label><select class="form-input" id="pac_sangue"><option value="">—</option><option>A+</option><option>A-</option><option>B+</option><option>B-</option><option>AB+</option><option>AB-</option><option>O+</option><option>O-</option></select></div>
+    </div>
+    <div class="sdiv">Alertas Clínicos</div>
+    <div class="form-grid">
+      <div><label class="form-label">Alergias</label><input class="form-input" id="pac_alergia" placeholder="Ex: Dipirona, látex..."></div>
+      <div><label class="form-label">Comorbidades</label><input class="form-input" id="pac_comorbidade" placeholder="Ex: HAS, DM2..."></div>
+      <div class="full"><label class="form-label">Medicamentos em uso</label><input class="form-input" id="pac_medicamentos"></div>
+    </div>
+    <div class="form-actions"><button class="btn-secondary" onclick="closeModal('modalPaciente')">Cancelar</button><button class="btn-primary" onclick="savePaciente()"><i class="ti ti-check"></i>Salvar</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalProntuario">
+  <div class="modal" style="max-width:800px">
+    <div class="modal-title"><i class="ti ti-stethoscope"></i><span id="modalProntTitle">Novo Prontuário</span></div>
+    <div class="form-grid" style="margin-bottom:12px">
+      <div class="full"><label class="form-label">Paciente *</label><select class="form-input" id="pront_paciente"><option value="">Selecione...</option></select></div>
+      <div><label class="form-label">Tipo</label><select class="form-input" id="pront_tipo"><option>Primeira consulta</option><option>Retorno</option><option>Pós-operatório</option><option>Urgência</option><option>Teleconsulta</option></select></div>
+      <div><label class="form-label">Data</label><input type="date" class="form-input" id="pront_data"></div>
+    </div>
+    <div class="ptabs">
+      <button class="ptab on" onclick="goPTab('anamnese',this)">Anamnese</button>
+      <button class="ptab" onclick="goPTab('exame',this)">Exame Físico</button>
+      <button class="ptab" onclick="goPTab('exames',this)">Exames</button>
+      <button class="ptab" onclick="goPTab('conduta',this)">Conduta</button>
+      <button class="ptab" onclick="goPTab('anexos',this)"><i class="ti ti-paperclip" style="font-size:13px"></i> Anexos</button>
+    </div>
+
+    <div class="ppanel on" id="pp-anamnese">
+      <div style="margin-bottom:10px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+          <label class="form-label" style="margin-bottom:0">Queixa principal</label>
+          <button onclick="iniciarVozCampo('pront_queixa')" style="background:#EEEDFE;border:none;border-radius:6px;padding:3px 8px;font-size:11px;color:#3C3489;cursor:pointer;display:flex;align-items:center;gap:4px"><i class="ti ti-microphone" style="font-size:13px"></i>Ditar</button>
+        </div>
+        <textarea class="form-input" id="pront_queixa" rows="3" placeholder="Descreva a queixa..."></textarea>
+      </div>
+      <label class="form-label">Sintomas urológicos</label>
+      <div class="chip-group" id="chips_sint">
+        <span class="chip" onclick="this.classList.toggle('on')">Disúria</span><span class="chip" onclick="this.classList.toggle('on')">Hematúria</span><span class="chip" onclick="this.classList.toggle('on')">Polaciúria</span><span class="chip" onclick="this.classList.toggle('on')">Noctúria</span><span class="chip" onclick="this.classList.toggle('on')">Urgência miccional</span><span class="chip" onclick="this.classList.toggle('on')">Jato fraco</span><span class="chip" onclick="this.classList.toggle('on')">Retenção urinária</span><span class="chip" onclick="this.classList.toggle('on')">Dor lombar</span><span class="chip" onclick="this.classList.toggle('on')">Cólica renal</span><span class="chip" onclick="this.classList.toggle('on')">Disfunção erétil</span><span class="chip" onclick="this.classList.toggle('on')">Infertilidade</span><span class="chip" onclick="this.classList.toggle('on')">Massa palpável</span>
+      </div>
+      <label class="form-label" style="margin-top:12px">Dor — EVA (0–10)</label>
+      <div class="scale-row" id="eva_nums">
+        <span style="font-size:11px;color:var(--text-muted)">Sem</span>
+        <span class="snum" onclick="selEva(0)">0</span><span class="snum" onclick="selEva(1)">1</span><span class="snum" onclick="selEva(2)">2</span><span class="snum" onclick="selEva(3)">3</span><span class="snum" onclick="selEva(4)">4</span><span class="snum" onclick="selEva(5)">5</span><span class="snum" onclick="selEva(6)">6</span><span class="snum" onclick="selEva(7)">7</span><span class="snum" onclick="selEva(8)">8</span><span class="snum" onclick="selEva(9)">9</span><span class="snum" onclick="selEva(10)">10</span>
+        <span style="font-size:11px;color:var(--text-muted)">Máxima</span>
+      </div>
+      <div class="form-grid" style="margin-top:12px">
+        <div><label class="form-label">Cirurgias anteriores</label><textarea class="form-input" id="pront_cir_ant" rows="2"></textarea></div>
+        <div><label class="form-label">Histórico familiar</label><textarea class="form-input" id="pront_hist_fam" rows="2"></textarea></div>
+        <div class="full"><label class="form-label">Observações</label><textarea class="form-input" id="pront_obs_anam" rows="2"></textarea></div>
+      </div>
+      <div id="iaBox" style="display:none;margin-top:12px;background:#EEEDFE;border-radius:10px;padding:12px 14px;border:.5px solid #AFA9EC">
+        <div style="font-size:11px;font-weight:500;color:#3C3489;text-transform:uppercase;letter-spacing:.4px;margin-bottom:6px;display:flex;align-items:center;gap:6px"><i class="ti ti-robot" style="font-size:15px"></i>Sugestão da IA</div>
+        <div id="iaTxt" style="font-size:13px;color:#26215C;line-height:1.6"></div>
+      </div>
+      <button onclick="pedirSugestaoIA()" style="margin-top:10px;background:none;border:.5px solid #AFA9EC;border-radius:8px;padding:7px 14px;font-size:12px;color:#534AB7;cursor:pointer;display:flex;align-items:center;gap:5px;font-family:inherit"><i class="ti ti-sparkles"></i>Sugerir diagnóstico com IA</button>
+    </div>
+
+    <div class="ppanel" id="pp-exame">
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:8px;margin-bottom:12px">
+        <div><label class="form-label">PA</label><input class="form-input" id="pront_pa" placeholder="120/80"></div>
+        <div><label class="form-label">FC</label><input class="form-input" id="pront_fc" placeholder="72bpm"></div>
+        <div><label class="form-label">Temp.</label><input class="form-input" id="pront_temp" placeholder="36,5°C"></div>
+        <div><label class="form-label">Peso</label><input class="form-input" id="pront_peso" placeholder="70kg" oninput="calcImc()"></div>
+        <div><label class="form-label">Altura</label><input class="form-input" id="pront_altura" placeholder="1,75m" oninput="calcImc()"></div>
+        <div><label class="form-label">IMC</label><input class="form-input" id="pront_imc" readonly></div>
+      </div>
+      <div class="form-grid">
+        <div><label class="form-label">Abdome</label><select class="form-input" id="pront_abdome"><option value="">—</option><option>Normal</option><option>Globoso</option><option>Dor FID</option><option>Dor FIE</option><option>Massa palpável</option></select></div>
+        <div><label class="form-label">PPL</label><select class="form-input" id="pront_ppl"><option value="">—</option><option>Negativo bilateral</option><option>Positivo direita</option><option>Positivo esquerda</option><option>Positivo bilateral</option></select></div>
+        <div><label class="form-label">Genitália</label><select class="form-input" id="pront_gen"><option value="">—</option><option>Normal</option><option>Fimose</option><option>Varicocele</option><option>Hidrocele</option><option>Massa testicular</option></select></div>
+        <div><label class="form-label">Toque retal</label><select class="form-input" id="pront_toque"><option value="">Não realizado</option><option>Normal</option><option>Aumentada (BPH)</option><option>Nodular suspeita</option><option>Endurecida</option><option>Dolorosa</option></select></div>
+        <div class="full"><label class="form-label">Observações do exame</label><textarea class="form-input" id="pront_obs_ex" rows="2"></textarea></div>
+      </div>
+    </div>
+
+    <div class="ppanel" id="pp-exames">
+      <label class="form-label">Exames solicitados</label>
+      <div class="chip-group" id="chips_exs" style="margin-bottom:12px">
+        <span class="chip" onclick="this.classList.toggle('on')">PSA total</span><span class="chip" onclick="this.classList.toggle('on')">PSA livre</span><span class="chip" onclick="this.classList.toggle('on')">Urocultura</span><span class="chip" onclick="this.classList.toggle('on')">EQU</span><span class="chip" onclick="this.classList.toggle('on')">Creatinina</span><span class="chip" onclick="this.classList.toggle('on')">Hemograma</span><span class="chip" onclick="this.classList.toggle('on')">US rins</span><span class="chip" onclick="this.classList.toggle('on')">US próstata</span><span class="chip" onclick="this.classList.toggle('on')">TC abdome</span><span class="chip" onclick="this.classList.toggle('on')">RM próstata</span><span class="chip" onclick="this.classList.toggle('on')">Uretrocistoscopia</span><span class="chip" onclick="this.classList.toggle('on')">Espermograma</span><span class="chip" onclick="this.classList.toggle('on')">Biópsia próstata</span>
+      </div>
+      <div class="form-grid">
+        <div><label class="form-label">PSA total (ng/mL)</label><input class="form-input" id="pront_psa" oninput="checkPsa()"></div>
+        <div><label class="form-label">PSA livre / total</label><input class="form-input" id="pront_psa_l"></div>
+        <div><label class="form-label">Creatinina (mg/dL)</label><input class="form-input" id="pront_creat"></div>
+        <div><label class="form-label">Urocultura</label><select class="form-input" id="pront_uroc"><option value="">—</option><option>Negativa</option><option>Positiva E. coli</option><option>Positiva Klebsiella</option><option>Positiva outro germe</option></select></div>
+      </div>
+      <div id="psaAlerta" style="display:none" class="alert-box"><i class="ti ti-alert-triangle"></i><span id="psaAlertaTxt"></span></div>
+      <label class="form-label" style="margin-top:12px">Hipótese diagnóstica (CID)</label>
+      <div class="chip-group" id="chips_cid">
+        <span class="chip" onclick="this.classList.toggle('on')">N20 — Litíase</span><span class="chip" onclick="this.classList.toggle('on')">N40 — HBP</span><span class="chip" onclick="this.classList.toggle('on')">C61 — Ca próstata</span><span class="chip" onclick="this.classList.toggle('on')">N30 — Cistite</span><span class="chip" onclick="this.classList.toggle('on')">N45 — Orquite</span><span class="chip" onclick="this.classList.toggle('on')">N47 — Fimose</span><span class="chip" onclick="this.classList.toggle('on')">F52.2 — DE</span><span class="chip" onclick="this.classList.toggle('on')">N99 — Pós-op</span>
+      </div>
+      <div style="margin-top:12px"><label class="form-label">Outros resultados</label><textarea class="form-input" id="pront_outros" rows="3"></textarea></div>
+    </div>
+
+    <div class="ppanel" id="pp-conduta">
+      <label class="form-label">Medicamentos prescritos</label>
+      <div id="medList" style="margin-bottom:6px"></div>
+      <button onclick="addMed()" style="background:none;border:none;color:var(--teal-dark);font-size:12px;cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:4px"><i class="ti ti-plus"></i>Adicionar medicamento</button>
+      <div class="form-grid" style="margin-top:12px">
+        <div><label class="form-label">Procedimento indicado</label><select class="form-input" id="pront_proc_ind"><option value="">Nenhum</option><option>Postectomia</option><option>Vasectomia</option><option>Ureterorenolitotripsia Laser</option><option>RTU Próstata</option><option>Nefrectomia parcial VLP</option><option>Biópsia próstata</option><option>Outro</option></select></div>
+        <div><label class="form-label">Urgência</label><select class="form-input" id="pront_urg"><option>Eletiva</option><option>Urgência (7-15 dias)</option><option>Emergência (&lt;24h)</option></select></div>
+        <div><label class="form-label">Data retorno</label><input type="date" class="form-input" id="pront_ret"></div>
+        <div><label class="form-label">Tipo retorno</label><select class="form-input" id="pront_tiporet"><option>Presencial</option><option>Teleconsulta</option><option>Apenas exames</option></select></div>
+        <div class="full"><label class="form-label">Orientações ao paciente</label><textarea class="form-input" id="pront_orient" rows="3"></textarea></div>
+        <div class="full"><label class="form-label">Observações finais</label><textarea class="form-input" id="pront_obs_cond" rows="2"></textarea></div>
+      </div>
+    </div>
+
+    <div class="ppanel" id="pp-anexos">
+      <div style="border:2px dashed var(--border);border-radius:10px;padding:24px;text-align:center;margin-bottom:14px;cursor:pointer" onclick="document.getElementById('fileInput').click()" id="dropZone">
+        <i class="ti ti-cloud-upload" style="font-size:32px;color:var(--text-muted);display:block;margin-bottom:8px"></i>
+        <div style="font-size:14px;font-weight:500;margin-bottom:4px">Clique ou arraste arquivos aqui</div>
+        <div style="font-size:12px;color:var(--text-muted)">Imagens, PDFs, laudos — até 50MB por arquivo</div>
+        <input type="file" id="fileInput" style="display:none" multiple accept="image/*,.pdf,.dcm" onchange="uploadAnexos(this.files)">
+      </div>
+      <div id="anexosList"></div>
+    </div>
+
+    <div class="form-actions"><button class="btn-secondary" onclick="closeModal('modalProntuario')">Cancelar</button><button class="btn-primary" onclick="saveProntuario()"><i class="ti ti-device-floppy"></i>Salvar</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalPag">
+  <div class="modal">
+    <div class="modal-title"><i class="ti ti-cash"></i><span id="modalPagTitle">Registrar Pagamento</span></div>
+    <div class="form-grid">
+      <div class="full"><label class="form-label">Procedimento *</label><select class="form-input" id="pag_proc_id" onchange="autoFillPag()"><option value="">Selecione...</option></select></div>
+      <div class="full"><label class="form-label">Procedimento</label><input class="form-input" id="pag_proc" readonly></div>
+      <div><label class="form-label">Hospital</label><input class="form-input" id="pag_hosp" readonly></div>
+      <div><label class="form-label">Data Pagamento</label><input type="date" class="form-input" id="pag_data"></div>
+    </div>
+    <div class="sdiv">Valores (R$)</div>
+    <div class="form-grid">
+      <div><label class="form-label">Hospital</label><input type="number" class="form-input" id="pag_vhosp" value="0" oninput="calcTotais()"></div>
+      <div><label class="form-label">Cirurgião</label><input type="number" class="form-input" id="pag_vcirg" value="0" oninput="calcTotais()"></div>
+      <div><label class="form-label">1º Auxiliar</label><input type="number" class="form-input" id="pag_vaux" value="0" oninput="calcTotais()"></div>
+      <div><label class="form-label">Anestesista</label><input type="number" class="form-input" id="pag_vanest" value="0" oninput="calcTotais()"></div>
+      <div><label class="form-label">Instrumentador</label><input type="number" class="form-input" id="pag_vinstr" value="0" oninput="calcTotais()"></div>
+      <div><label class="form-label">OPME</label><input type="number" class="form-input" id="pag_opme" value="0" oninput="calcTotais()"></div>
+      <div><label class="form-label">Agendamento</label><input type="number" class="form-input" id="pag_vagend" value="0" oninput="calcTotais()"></div>
+    </div>
+    <div style="display:flex;gap:20px;padding:12px 0;border-top:.5px solid var(--border);margin-top:12px;flex-wrap:wrap">
+      <div><span style="font-size:12px;color:var(--text-muted);display:block">Total Equipe</span><strong id="totalEq" style="font-size:18px;color:var(--teal)">R$ 0,00</strong></div>
+      <div><span style="font-size:12px;color:var(--text-muted);display:block">Agendamento</span><strong id="totalAg" style="font-size:18px;color:var(--amber)">R$ 0,00</strong></div>
+      <div><span style="font-size:12px;color:var(--text-muted);display:block">Cirurgião</span><strong id="totalCi" style="font-size:18px;color:var(--teal-dark)">R$ 0,00</strong></div>
+    </div>
+    <div class="form-actions"><button class="btn-secondary" onclick="closeModal('modalPag')">Cancelar</button><button class="btn-primary" onclick="savePag()"><i class="ti ti-check"></i>Salvar</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalValor">
+  <div class="modal" style="max-width:480px">
+    <div class="modal-title"><i class="ti ti-receipt"></i><span id="modalValorTitle">Novo Procedimento</span></div>
+    <div class="form-grid">
+      <div class="full"><label class="form-label">Nome *</label><input class="form-input" id="val_nome"></div>
+      <div><label class="form-label">Valor Cirurgião (R$)</label><input type="number" class="form-input" id="val_valor" value="0"></div>
+      <div><label class="form-label">Código TUSS</label><input class="form-input" id="val_tuss"></div>
+      <div class="full"><label class="form-label">2º Cirurgião</label><select class="form-input" id="val_2cir"><option value="não">Não</option><option value="sim">Sim</option></select></div>
+    </div>
+    <div class="form-actions"><button class="btn-secondary" onclick="closeModal('modalValor')">Cancelar</button><button class="btn-primary" onclick="saveValor()"><i class="ti ti-check"></i>Salvar</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalUsuario">
+  <div class="modal" style="max-width:460px">
+    <div class="modal-title"><i class="ti ti-user-plus"></i>Convidar Usuário</div>
+    <div class="form-grid">
+      <div class="full"><label class="form-label">Nome</label><input class="form-input" id="usr_nome" placeholder="Nome completo"></div>
+      <div class="full"><label class="form-label">E-mail *</label><input type="email" class="form-input" id="usr_email" placeholder="email@exemplo.com"></div>
+      <div class="full"><label class="form-label">Senha inicial *</label><input type="password" class="form-input" id="usr_senha" placeholder="Mínimo 6 caracteres"></div>
+      <div class="full"><label class="form-label">Perfil de acesso</label>
+        <select class="form-input" id="usr_perfil">
+          <option value="secretaria">Secretária — procedimentos e pagamentos</option>
+          <option value="medico">Médico — acesso completo</option>
+        </select>
+      </div>
+    </div>
+    <div style="background:#FAEEDA;border-radius:8px;padding:10px 12px;margin-top:10px;font-size:12px;color:#633806;display:flex;gap:7px">
+      <i class="ti ti-info-circle" style="flex-shrink:0;font-size:15px;margin-top:1px"></i>
+      <span>O usuário receberá as credenciais de acesso. Peça para ele alterar a senha no primeiro login.</span>
+    </div>
+    <div class="form-actions"><button class="btn-secondary" onclick="closeModal('modalUsuario')">Cancelar</button><button class="btn-primary" onclick="saveUsuario()"><i class="ti ti-check"></i>Criar Usuário</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalImagem">
+  <div class="modal" style="max-width:700px;text-align:center">
+    <div class="modal-title"><i class="ti ti-photo"></i><span id="imgModalTitle">Visualizar Anexo</span></div>
+    <img id="imgModalSrc" style="max-width:100%;max-height:60vh;border-radius:8px;object-fit:contain" src="" alt="">
+    <div class="form-actions"><button class="btn-secondary" onclick="closeModal('modalImagem')">Fechar</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script src="app.js"></script>
+</body>
+</html>
