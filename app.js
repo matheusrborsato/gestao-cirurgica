@@ -3,12 +3,7 @@ const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSI
 const CLAUDE_KEY='SUA_CHAVE_CLAUDE_AQUI';
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 
-const BADGE={
-  'Aprovado':'s-aprovado','Aguardando retorno do paciente':'s-aguardando',
-  'Sem resposta do paciente':'s-sem-resposta','Cancelado':'s-cancelado',
-  'Aguardando OPME':'s-opme','Aguardando Anestesista':'s-anestesista',
-  'Aguardando segundo cirurgião':'s-cirurgiao','Aguardando retorno do médico':'s-medico'
-};
+const BADGE={'Aprovado':'s-aprovado','Aguardando retorno do paciente':'s-aguardando','Sem resposta do paciente':'s-sem-resposta','Cancelado':'s-cancelado','Aguardando OPME':'s-opme','Aguardando Anestesista':'s-anestesista','Aguardando segundo cirurgião':'s-cirurgiao','Aguardando retorno do médico':'s-medico'};
 const COLORS=['#1D9E75','#BA7517','#D85A30','#534AB7','#185FA5','#639922','#993556','#888780'];
 let chartInst={};
 let editProcId=null,editPacId=null,editPagId=null,editValId=null,editProntId=null;
@@ -21,6 +16,7 @@ let currentProntId=null;
 const fmtBRL=v=>'R$ '+Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
 const fmtDate=d=>{if(!d)return'—';try{const[y,m,di]=d.split('-');return`${di}/${m}/${y}`}catch{return d}};
 const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const simNao=v=>v==='sim'?'<span style="color:var(--teal)">✅</span>':'<span style="color:#ccc">❌</span>';
 
 function showToast(msg,err=false){
   const t=document.getElementById('toast');
@@ -29,7 +25,6 @@ function showToast(msg,err=false){
   setTimeout(()=>t.classList.remove('show'),3000);
 }
 
-/* ===== AUTH ===== */
 async function doLogin(){
   const email=document.getElementById('loginEmail').value.trim();
   const pwd=document.getElementById('loginPwd').value;
@@ -40,7 +35,6 @@ async function doLogin(){
   if(error){const e=document.getElementById('loginErr');e.style.display='block';e.textContent='E-mail ou senha inválidos.';return}
   await initApp(data.user);
 }
-
 async function doLogout(){
   await sb.auth.signOut();
   document.getElementById('mainApp').style.display='none';
@@ -48,7 +42,6 @@ async function doLogout(){
   document.getElementById('loginEmail').value='';
   document.getElementById('loginPwd').value='';
 }
-
 async function alterarSenha(){
   const nova=document.getElementById('novaSenha').value;
   const conf=document.getElementById('confirmSenha').value;
@@ -60,7 +53,6 @@ async function alterarSenha(){
   msg.style.display='block';msg.style.background='#EAF3DE';msg.style.color='#3B6D11';msg.textContent='Senha alterada com sucesso!';
 }
 
-/* ===== INIT ===== */
 async function initApp(user){
   document.getElementById('loginScreen').style.display='none';
   const m=document.getElementById('mainApp');m.style.display='flex';m.style.flexDirection='column';
@@ -74,15 +66,11 @@ async function initApp(user){
   renderProc();renderPacientes();renderValores();renderPag();renderProntuarios();renderUsuarios();
   checkFollowUps();
 }
-
 function applyPerfil(){
   const isMedico=perfilUsuario==='medico';
-  document.querySelectorAll('.medico-only').forEach(el=>{
-    el.classList.toggle('hidden',!isMedico);
-  });
+  document.querySelectorAll('.medico-only').forEach(el=>el.classList.toggle('hidden',!isMedico));
 }
 
-/* ===== DATA LOADERS ===== */
 async function loadPac(){const{data}=await sb.from('pacientes').select('*').order('nome');cachedPac=data||[];populateSelects()}
 async function loadProcs(){const{data}=await sb.from('procedimentos').select('*').order('created_at',{ascending:false});cachedProcs=data||[]}
 async function loadVals(){const{data}=await sb.from('tabela_valores').select('*').order('nome');cachedVals=data||[];populateProcSel()}
@@ -107,7 +95,6 @@ function populateProcSel(){
   cachedProcs.forEach(p=>{const o=document.createElement('option');o.value=p.id;o.textContent=p.nome_paciente+' — '+p.procedimento;ps.appendChild(o)});
 }
 
-/* ===== TABS ===== */
 function showTab(t){
   const all=['procedimentos','pacientes','prontuarios','pagamentos','valores','relatorios','usuarios','config'];
   all.forEach(id=>{
@@ -118,7 +105,6 @@ function showTab(t){
   if(t==='pagamentos'){populateProcSel();renderPag()}
 }
 
-/* ===== RENDER PROCEDIMENTOS ===== */
 function renderProc(){
   const q=(document.getElementById('searchProc').value||'').toLowerCase();
   const st=document.getElementById('filterStatus').value;
@@ -141,7 +127,6 @@ function renderProc(){
   </tr>`).join('');
 }
 
-/* ===== RENDER PACIENTES ===== */
 function renderPacientes(){
   const q=(document.getElementById('searchPac').value||'').toLowerCase();
   const f=cachedPac.filter(p=>!q||p.nome.toLowerCase().includes(q));
@@ -160,7 +145,6 @@ function renderPacientes(){
   </tr>`).join('');
 }
 
-/* ===== RENDER PRONTUÁRIOS ===== */
 function renderProntuarios(){
   const q=(document.getElementById('searchPront').value||'').toLowerCase();
   const f=cachedPronts.filter(p=>!q||(p.nome_paciente||'').toLowerCase().includes(q));
@@ -180,7 +164,6 @@ function renderProntuarios(){
   </tr>`).join('');
 }
 
-/* ===== RENDER PAGAMENTOS ===== */
 function renderPag(){
   const q=(document.getElementById('searchPag').value||'').toLowerCase();
   const f=cachedPags.filter(p=>!q||(p.nome_paciente||'').toLowerCase().includes(q));
@@ -206,15 +189,19 @@ function renderPag(){
   </tr>`).join('');
 }
 
-/* ===== RENDER VALORES ===== */
+/* ===== RENDER VALORES — ATUALIZADO ===== */
 function renderValores(){
   const tb=document.getElementById('tbodyValores');
-  if(!cachedVals.length){tb.innerHTML='<tr><td colspan="5"><div class="empty"><i class="ti ti-receipt"></i>Nenhum procedimento</div></td></tr>';return}
+  if(!cachedVals.length){tb.innerHTML='<tr><td colspan="9"><div class="empty"><i class="ti ti-receipt"></i>Nenhum procedimento</div></td></tr>';return}
   tb.innerHTML=cachedVals.map(v=>`<tr>
     <td><strong>${esc(v.nome)}</strong></td>
     <td>${fmtBRL(v.valor)}</td>
-    <td style="font-family:monospace;color:var(--text-muted)">${esc(v.tuss||'—')}</td>
-    <td><span style="color:${v.segundo_cirurgiao==='sim'?'var(--teal)':'var(--text-muted)'}"><i class="ti ti-${v.segundo_cirurgiao==='sim'?'check':'x'}"></i> ${v.segundo_cirurgiao==='sim'?'Sim':'Não'}</span></td>
+    <td style="font-family:monospace;font-size:12px;color:var(--text-muted)">${esc(v.tuss||'—')}</td>
+    <td style="text-align:center">${simNao(v.segundo_cirurgiao)}</td>
+    <td style="text-align:center">${simNao(v.anestesista)}</td>
+    <td style="text-align:center">${simNao(v.instrumentador)}</td>
+    <td style="text-align:center">${Number(v.enfermaria||0)>0?v.enfermaria:'—'}</td>
+    <td style="text-align:center">${Number(v.cti||0)>0?v.cti:'—'}</td>
     <td style="white-space:nowrap">
       <button class="btn-icon" onclick="editValor('${v.id}')"><i class="ti ti-edit"></i></button>
       <button class="btn-icon danger" onclick="delValor('${v.id}')"><i class="ti ti-trash"></i></button>
@@ -222,7 +209,6 @@ function renderValores(){
   </tr>`).join('');
 }
 
-/* ===== RENDER USUÁRIOS ===== */
 function renderUsuarios(){
   const tb=document.getElementById('tbodyUsuarios');if(!tb)return;
   if(!cachedUsers.length){tb.innerHTML='<tr><td colspan="5"><div class="empty"><i class="ti ti-users"></i>Nenhum usuário</div></td></tr>';return}
@@ -235,7 +221,6 @@ function renderUsuarios(){
   </tr>`).join('');
 }
 
-/* ===== RENDER RELATÓRIOS ===== */
 function renderRelatorios(){
   const procs=cachedProcs,pags=cachedPags;
   const aprov=procs.filter(p=>p.status==='Aprovado').length;
@@ -270,7 +255,6 @@ function renderRelatorios(){
   chartInst.cF=new Chart(document.getElementById('cF'),{type:'bar',data:{labels:pNomes.length?pNomes:['Sem dados'],datasets:[{label:'Agendamento',data:pags.map(p=>p.v_agendamento||0),backgroundColor:'#BA7517',borderRadius:4},{label:'Cirurgião',data:pags.map(p=>p.v_cirurgiao||0),backgroundColor:'#1D9E75',borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{font:{size:11},boxWidth:12}}},scales:{y:{beginAtZero:true}}}});
 }
 
-/* ===== FOLLOW-UP ===== */
 async function checkFollowUps(){
   const hoje=new Date();
   const ag=cachedProcs.filter(p=>p.status==='Aguardando retorno do paciente');
@@ -289,7 +273,6 @@ async function checkFollowUps(){
   if(n>0)renderProc();
 }
 
-/* ===== CRUD PROCEDIMENTOS ===== */
 function openModalProc(id){
   editProcId=id||null;
   document.getElementById('modalProcTitle').textContent=id?'Editar Procedimento':'Novo Procedimento';
@@ -330,7 +313,6 @@ async function saveProc(){
 function editProc(id){openModalProc(id)}
 async function delProc(id){if(!confirm('Excluir?'))return;const{error}=await sb.from('procedimentos').delete().eq('id',id);if(error)return showToast('Erro.',true);showToast('Excluído!');cachedProcs=cachedProcs.filter(p=>p.id!==id);renderProc()}
 
-/* ===== CRUD PACIENTES ===== */
 function openModalPaciente(id){
   editPacId=id||null;
   document.getElementById('modalPacTitle').textContent=id?'Editar Paciente':'Novo Paciente';
@@ -362,7 +344,6 @@ async function savePaciente(){
 function editPaciente(id){openModalPaciente(id)}
 async function delPaciente(id){if(!confirm('Excluir?'))return;const{error}=await sb.from('pacientes').delete().eq('id',id);if(error)return showToast('Erro.',true);showToast('Excluído!');cachedPac=cachedPac.filter(p=>p.id!==id);populateSelects();renderPacientes()}
 
-/* ===== CRUD PRONTUÁRIOS ===== */
 function openModalProntuario(id){
   editProntId=id||null;evaVal=null;anexosPendentes=[];currentProntId=id||null;
   document.getElementById('modalProntTitle').textContent=id?'Editar Prontuário':'Novo Prontuário';
@@ -433,14 +414,10 @@ async function saveProntuario(){
 function editProntuario(id){openModalProntuario(id)}
 async function delProntuario(id){if(!confirm('Excluir?'))return;const{error}=await sb.from('prontuarios').delete().eq('id',id);if(error)return showToast('Erro.',true);showToast('Excluído!');cachedPronts=cachedPronts.filter(p=>p.id!==id);renderProntuarios()}
 
-/* ===== ANEXOS ===== */
 function uploadAnexos(files){
   for(const file of files){
     const reader=new FileReader();
-    reader.onload=e=>{
-      anexosPendentes.push({file,dataUrl:e.target.result});
-      renderAnexosPendentes();
-    };
+    reader.onload=e=>{anexosPendentes.push({file,dataUrl:e.target.result});renderAnexosPendentes()};
     reader.readAsDataURL(file);
   }
 }
@@ -486,7 +463,6 @@ function previewImagem(src,nome){
   document.getElementById('modalImagem').classList.add('open');
 }
 
-/* ===== CRUD PAGAMENTOS ===== */
 function openModalPag(id){
   editPagId=id||null;
   document.getElementById('modalPagTitle').textContent=id?'Editar Pagamento':'Registrar Pagamento';
@@ -541,17 +517,46 @@ async function savePag(){
 function editPag(id){openModalPag(id)}
 async function delPag(id){if(!confirm('Excluir?'))return;const{error}=await sb.from('pagamentos').delete().eq('id',id);if(error)return showToast('Erro.',true);showToast('Excluído!');cachedPags=cachedPags.filter(p=>p.id!==id);renderPag()}
 
-/* ===== CRUD VALORES ===== */
+/* ===== CRUD VALORES — ATUALIZADO COM NOVAS COLUNAS ===== */
 function openModalValor(id){
   editValId=id||null;
   document.getElementById('modalValorTitle').textContent=id?'Editar':'Novo Procedimento';
-  document.getElementById('val_nome').value='';document.getElementById('val_valor').value='0';document.getElementById('val_tuss').value='';document.getElementById('val_2cir').value='não';
-  if(id){const v=cachedVals.find(x=>x.id===id);if(v){document.getElementById('val_nome').value=v.nome;document.getElementById('val_valor').value=v.valor||0;document.getElementById('val_tuss').value=v.tuss||'';document.getElementById('val_2cir').value=v.segundo_cirurgiao||'não'}}
+  document.getElementById('val_nome').value='';
+  document.getElementById('val_valor').value='0';
+  document.getElementById('val_tuss').value='';
+  document.getElementById('val_2cir').value='não';
+  document.getElementById('val_anest').value='não';
+  document.getElementById('val_instr').value='sim';
+  document.getElementById('val_enfermaria').value='0';
+  document.getElementById('val_cti').value='0';
+  document.getElementById('val_diarias').value='0';
+  if(id){const v=cachedVals.find(x=>x.id===id);if(v){
+    document.getElementById('val_nome').value=v.nome;
+    document.getElementById('val_valor').value=v.valor||0;
+    document.getElementById('val_tuss').value=v.tuss||'';
+    document.getElementById('val_2cir').value=v.segundo_cirurgiao||'não';
+    document.getElementById('val_anest').value=v.anestesista||'não';
+    document.getElementById('val_instr').value=v.instrumentador||'sim';
+    document.getElementById('val_enfermaria').value=v.enfermaria||0;
+    document.getElementById('val_cti').value=v.cti||0;
+    document.getElementById('val_diarias').value=v.diarias||0;
+  }}
   document.getElementById('modalValor').classList.add('open');
 }
 async function saveValor(){
-  const nome=document.getElementById('val_nome').value.trim();if(!nome)return showToast('Informe o nome.',true);
-  const obj={nome,valor:Number(document.getElementById('val_valor').value||0),tuss:document.getElementById('val_tuss').value,segundo_cirurgiao:document.getElementById('val_2cir').value};
+  const nome=document.getElementById('val_nome').value.trim();
+  if(!nome)return showToast('Informe o nome.',true);
+  const obj={
+    nome,
+    valor:Number(document.getElementById('val_valor').value||0),
+    tuss:document.getElementById('val_tuss').value,
+    segundo_cirurgiao:document.getElementById('val_2cir').value,
+    anestesista:document.getElementById('val_anest').value,
+    instrumentador:document.getElementById('val_instr').value,
+    enfermaria:Number(document.getElementById('val_enfermaria').value||0),
+    cti:Number(document.getElementById('val_cti').value||0),
+    diarias:document.getElementById('val_diarias').value
+  };
   let err;
   if(editValId){const r=await sb.from('tabela_valores').update(obj).eq('id',editValId);err=r.error}
   else{const r=await sb.from('tabela_valores').insert(obj);err=r.error}
@@ -561,7 +566,6 @@ async function saveValor(){
 function editValor(id){openModalValor(id)}
 async function delValor(id){if(!confirm('Excluir?'))return;const{error}=await sb.from('tabela_valores').delete().eq('id',id);if(error)return showToast('Erro.',true);showToast('Excluído!');cachedVals=cachedVals.filter(v=>v.id!==id);renderValores();populateProcSel()}
 
-/* ===== USUÁRIOS — CORRIGIDO COM EDGE FUNCTION ===== */
 function openModalUsuario(){
   document.getElementById('usr_nome').value='';
   document.getElementById('usr_email').value='';
@@ -579,11 +583,7 @@ async function saveUsuario(){
   const{data:{session}}=await sb.auth.getSession();
   const resp=await fetch(`${SUPABASE_URL}/functions/v1/criar-usuario`,{
     method:'POST',
-    headers:{
-      'Content-Type':'application/json',
-      'Authorization':'Bearer '+session.access_token,
-      'apikey':SUPABASE_KEY
-    },
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token,'apikey':SUPABASE_KEY},
     body:JSON.stringify({email,senha,nome,perfil})
   });
   const result=await resp.json();
@@ -596,7 +596,6 @@ async function toggleUsuario(id,ativo){
   showToast(ativo?'Usuário desativado':'Usuário ativado');await loadUsers();renderUsuarios();
 }
 
-/* ===== IA ===== */
 async function pedirSugestaoIA(){
   const queixa=document.getElementById('pront_queixa').value;
   const sint=[...document.querySelectorAll('#chips_sint .chip.on')].map(c=>c.textContent.trim()).join(', ');
@@ -608,34 +607,23 @@ async function pedirSugestaoIA(){
     const resp=await fetch('https://api.anthropic.com/v1/messages',{
       method:'POST',
       headers:{'Content-Type':'application/json','x-api-key':CLAUDE_KEY,'anthropic-version':'2023-06-01'},
-      body:JSON.stringify({
-        model:'claude-sonnet-4-20250514',max_tokens:400,
-        messages:[{role:'user',content:`Você é um assistente clínico especializado em urologia. Com base nos dados abaixo, sugira brevemente os principais diagnósticos diferenciais e exames mais relevantes. Seja conciso e objetivo.\n\nQueixa: ${queixa}\nSintomas: ${sint||'não informados'}\nPSA: ${psa||'não informado'}\n\nResponda em português, sem introdução, direto ao ponto.`}]
-      })
+      body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:400,messages:[{role:'user',content:`Você é um assistente clínico especializado em urologia. Com base nos dados abaixo, sugira brevemente os principais diagnósticos diferenciais e exames mais relevantes. Seja conciso e objetivo.\n\nQueixa: ${queixa}\nSintomas: ${sint||'não informados'}\nPSA: ${psa||'não informado'}\n\nResponda em português, sem introdução, direto ao ponto.`}]})
     });
     const d=await resp.json();
     txt.textContent=d.content?.[0]?.text||'Não foi possível gerar sugestão.';
   }catch(e){txt.textContent='Configure a chave da API do Claude em app.js para usar este recurso.'}
 }
 
-/* ===== VOZ ===== */
-function toggleVoz(){
-  if(vozRec&&vozRec.recording){pararVoz();return}
-  iniciarVozCampo('pront_queixa');
-}
+function toggleVoz(){if(vozRec&&vozRec.recording){pararVoz();return}iniciarVozCampo('pront_queixa')}
 function iniciarVozCampo(campoId){
-  if(!('webkitSpeechRecognition' in window||'SpeechRecognition' in window)){showToast('Navegador não suporta reconhecimento de voz. Use o Chrome.',true);return}
+  if(!('webkitSpeechRecognition' in window||'SpeechRecognition' in window)){showToast('Use o Chrome para ditado por voz.',true);return}
   const SpeechRec=window.SpeechRecognition||window.webkitSpeechRecognition;
   const rec=new SpeechRec();
   rec.lang='pt-BR';rec.continuous=true;rec.interimResults=true;
   vozCampoAtivo=campoId;vozRec=rec;
   const status=document.getElementById('vozStatus');const vozTxt=document.getElementById('vozTxt');
   status.style.display='flex';
-  rec.onresult=e=>{
-    let txt='';for(let i=e.resultIndex;i<e.results.length;i++){txt+=e.results[i][0].transcript}
-    const campo=document.getElementById(vozCampoAtivo);if(campo)campo.value=txt;
-    vozTxt.textContent='Ouvindo: "'+txt.slice(-60)+'"';
-  };
+  rec.onresult=e=>{let txt='';for(let i=e.resultIndex;i<e.results.length;i++){txt+=e.results[i][0].transcript}const campo=document.getElementById(vozCampoAtivo);if(campo)campo.value=txt;vozTxt.textContent='Ouvindo: "'+txt.slice(-60)+'"'};
   rec.onerror=()=>{status.style.display='none';showToast('Erro no reconhecimento de voz.',true)};
   rec.onend=()=>{status.style.display='none'};
   rec.start();rec.recording=true;
@@ -643,7 +631,6 @@ function iniciarVozCampo(campoId){
 }
 function pararVoz(){if(vozRec){vozRec.stop();vozRec=null}document.getElementById('vozStatus').style.display='none'}
 
-/* ===== PRONTUÁRIO HELPERS ===== */
 function goPTab(name,btn){
   document.querySelectorAll('.ptab').forEach(t=>t.classList.remove('on'));
   document.querySelectorAll('.ppanel').forEach(p=>p.classList.remove('on'));
@@ -676,7 +663,6 @@ function addMedVals(nome,dose,freq,dur){
 function closeModal(id){document.getElementById(id).classList.remove('open')}
 document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',function(e){if(e.target===this)this.classList.remove('open')}));
 
-/* ===== DRAG & DROP ===== */
 const dz=document.getElementById('dropZone');
 if(dz){
   dz.addEventListener('dragover',e=>{e.preventDefault();dz.style.borderColor='var(--teal)'});
@@ -684,7 +670,6 @@ if(dz){
   dz.addEventListener('drop',e=>{e.preventDefault();dz.style.borderColor='var(--border)';uploadAnexos(e.dataTransfer.files)});
 }
 
-/* ===== AUTO LOGIN ===== */
 (async()=>{
   const{data:{session}}=await sb.auth.getSession();
   if(session){await initApp(session.user)}
